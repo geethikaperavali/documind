@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings – DocuMind</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">D</div>
+          <span>DocuMind</span>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/index.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="/documents.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Knowledge Base</span>
+        </a>
+        <a href="/chat.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span>AI Assistant</span>
+        </a>
+        <a href="/settings.html" class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="/settings.html" class="user-profile-badge">
+          <div class="user-avatar">U</div>
+          <div class="user-info">
+            <div class="user-name">Loading...</div>
+            <div class="user-email">...</div>
+          </div>
+        </a>
+        <button type="button" class="btn-signout" id="btn-sidebar-signout" title="Sign Out">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div class="page-title-block">
+          <h1>Account & Settings</h1>
+          <p>Manage your profile, preferences, and AI connections</p>
+        </div>
+      </header>
+
+      <main class="content-body" style="max-width:840px;">
+        <!-- User Profile Card -->
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-header">
+            <h2 class="card-title">Profile Information</h2>
+          </div>
+
+          <div id="profile-alert" class="alert"></div>
+
+          <form id="profile-form" class="auth-form" style="gap:16px;">
+            <div class="form-group">
+              <label class="form-label" for="profile-email">Email Address</label>
+              <input type="email" id="profile-email" class="form-input" disabled style="background:#f1f5f9;cursor:not-allowed;">
+              <small style="color:var(--text-light);font-size:11px;">Your email is tied to your Supabase authentication account.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profile-name">Full Name</label>
+              <input type="text" id="profile-name" class="form-input" placeholder="Your Name">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profile-avatar">Avatar Image URL (Optional)</label>
+              <input type="url" id="profile-avatar" class="form-input" placeholder="https://example.com/photo.jpg">
+            </div>
+
+            <div>
+              <button type="submit" id="btn-save-profile" class="btn btn-primary">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- AI Engine & Environment Status -->
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-header">
+            <h2 class="card-title">Integration & Environment Status</h2>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-page);border-radius:var(--radius-md);border:1px solid var(--border-color);">
+              <div>
+                <strong style="color:var(--text-main);">Supabase (PostgreSQL + Auth + Storage + pgvector)</strong>
+                <div style="font-size:12px;color:var(--text-muted);">Database tables, Row Level Security, and vector storage</div>
+              </div>
+              <div id="status-supabase">
+                <span class="badge badge-processing">Checking...</span>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-page);border-radius:var(--radius-md);border:1px solid var(--border-color);">
+              <div>
+                <strong style="color:var(--text-main);">Google Gemini AI API</strong>
+                <div style="font-size:12px;color:var(--text-muted);">Powers RAG answer generation and reasoning</div>
+              </div>
+              <div id="status-gemini">
+                <span class="badge badge-processing">Checking...</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="api-alert" class="alert"></div>
+
+          <!-- Custom Gemini API Key Override -->
+          <form id="api-settings-form" class="auth-form" style="gap:16px;">
+            <div class="form-group">
+              <label class="form-label" for="gemini-api-key">Custom Gemini API Key (Optional)</label>
+              <input type="password" id="gemini-api-key" class="form-input" placeholder="AIzaSy...">
+              <small style="color:var(--text-muted);font-size:11px;">
+                You can provide a personal Google Gemini API key to use for RAG questions. Leave blank to use server environment default.
+              </small>
+            </div>
+
+            <div>
+              <button type="submit" class="btn btn-secondary">
+                Update API Preferences
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Account Actions -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Account Actions</h2>
+          </div>
+          <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
+            Sign out of your active DocuMind session on this browser.
+          </p>
+          <button type="button" id="btn-signout-main" class="btn btn-danger">
+            Sign Out of DocuMind
+          </button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/static/js/config.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/settings.js"></script>
+  <script>
+    document.getElementById("btn-sidebar-signout")?.addEventListener("click", () => {
+      if (confirm("Are you sure you want to sign out?")) {
+        window.authManager.signOut();
+      }
+    });
+  </script>
+</body>
+</html>

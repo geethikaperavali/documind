@@ -2,34 +2,11 @@ import io
 import re
 from typing import List, Dict, Any
 
-# Try importing pymupdf (formerly fitz), fallback to pypdf if not yet installed
-try:
-    import pymupdf as fitz  # PyMuPDF
-    HAVE_PYMUPDF = True
-except ImportError:
-    try:
-        import fitz
-        HAVE_PYMUPDF = True
-    except ImportError:
-        HAVE_PYMUPDF = False
-
-try:
-    import pypdf
-    HAVE_PYPDF = True
-except ImportError:
-    HAVE_PYPDF = False
-
-try:
-    import docx
-    HAVE_DOCX = True
-except ImportError:
-    HAVE_DOCX = False
-
-
 class DocumentProcessor:
     """
     Extracts text and page structure from PDF, DOCX, and TXT files,
     and performs semantic chunking with page number preservation for citations.
+    Dependencies (pymupdf, pypdf, docx) are imported lazily on demand to accelerate app startup.
     """
 
     def __init__(self, chunk_size: int = 800, chunk_overlap: int = 150):
@@ -42,175 +19,159 @@ class DocumentProcessor:
         Returns a list of dicts: [{"page_number": int, "text": str}]
         """
         file_type = file_type.lower().strip().replace(".", "")
-        pages_content = []
 
         if file_type == "pdf":
-            pages_content = self._extract_pdf(file_bytes)
+            return self._extract_pdf(file_bytes)
         elif file_type in ("docx", "doc"):
-            pages_content = self._extract_docx(file_bytes)
+            return self._extract_docx(file_bytes)
         elif file_type == "txt":
-            pages_content = self._extract_txt(file_bytes)
+            return self._extract_txt(file_bytes)
         else:
-            raise ValueError(f"Unsupported file type: .{file_type}. Supported types: PDF, DOCX, TXT.")
-
-        return pages_content
+            raise ValueError(f"Unsupported file type: {file_type}. Supported: pdf, docx, txt")
 
     def _extract_pdf(self, file_bytes: bytes) -> List[Dict[str, Any]]:
-        pages = []
-        if HAVE_PYMUPDF:
-            doc = fitz.open(stream=file_bytes, filetype="pdf")
-            for page_num in range(len(doc)):
-                page = doc.load_page(page_num)
-                text = page.get_text("text").strip()
-                if text:
-                    pages.append({"page_number": page_num + 1, "text": text})
-            doc.close()
-        elif HAVE_PYPDF:
-            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-            for i, page in enumerate(reader.pages):
-                text = (page.extract_text() or "").strip()
-                if text:
-                    pages.append({"page_number": i + 1, "text": text})
-        else:
-            raise RuntimeError("Neither PyMuPDF nor pypdf is installed to extract PDF text.")
+        """
+        Extracts pages from PDF using PyMuPDF (fitz) if available, falling back to pypdf.
+        """
+        # Lazy import PyMuPDF
+        try:
+            import pymupdf as fitz
+            have_pymupdf = True
+        except ImportError:
+            try:
+                import fitz
+                have_pymupdf = True
+            except ImportError:
+                have_pymupdf = False
 
-        return pages
+        if have_pymupdf:
+            pages = []
+            try:
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                for page_idx in range(len(doc)):
+                    page = doc[page_idx]
+                    text = page.get_text() or ""
+                    cleaned = self._clean_text(text)
+                    if cleaned:
+                        pages.append({
+                            "page_number": page_idx + 1,
+                            "text": cleaned
+                        })
+                doc.close()
+                if pages:
+                    return pages
+            except Exception as e:
+                print(f"[DocumentProcessor] PyMuPDF extraction failed: {e}. Falling back to pypdf.")
+
+        # Fallback to pypdf
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+            pages = []
+            for idx, page in enumerate(reader.pages):
+                text = page.extract_text() or ""
+                cleaned = self._clean_text(text)
+                if cleaned:
+                    pages.append({
+                        "page_number": idx + 1,
+                        "text": cleaned
+                    })
+            return pages
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract text from PDF: {e}")
 
     def _extract_docx(self, file_bytes: bytes) -> List[Dict[str, Any]]:
-        if not HAVE_DOCX:
-            raise RuntimeError("python-docx is not installed to extract DOCX text.")
+        """
+        Extracts paragraphs and approximate pages from DOCX using python-docx.
+        """
+        try:
+            import docx
+            doc = docx.Document(io.BytesIO(file_bytes))
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            full_text = "\n".join(paragraphs)
 
-        doc = docx.Document(io.BytesIO(file_bytes))
-        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-        
-        # Word documents do not have fixed physical pages in the XML;
-        # We group every 4-5 paragraphs or ~2500 chars into simulated "pages/sections" for citation.
-        pages = []
-        current_page_text = []
-        current_char_count = 0
-        page_num = 1
-
-        for p in paragraphs:
-            current_page_text.append(p)
-            current_char_count += len(p)
-            if current_char_count >= 2000:
-                pages.append({
-                    "page_number": page_num,
-                    "text": "\n\n".join(current_page_text)
+            # Split into synthetic pages of roughly 2500 characters
+            synthetic_pages = []
+            page_size = 2500
+            for i in range(0, max(len(full_text), 1), page_size):
+                chunk = full_text[i:i + page_size]
+                synthetic_pages.append({
+                    "page_number": (i // page_size) + 1,
+                    "text": self._clean_text(chunk)
                 })
-                current_page_text = []
-                current_char_count = 0
-                page_num += 1
-
-        if current_page_text:
-            pages.append({
-                "page_number": page_num,
-                "text": "\n\n".join(current_page_text)
-            })
-
-        return pages
+            return synthetic_pages
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract text from DOCX: {e}")
 
     def _extract_txt(self, file_bytes: bytes) -> List[Dict[str, Any]]:
-        # Try UTF-8 decoding, fallback to latin-1
+        """
+        Decodes raw text with utf-8 (or latin-1 fallback).
+        """
         try:
             text = file_bytes.decode("utf-8")
         except UnicodeDecodeError:
             text = file_bytes.decode("latin-1", errors="replace")
 
-        text = text.strip()
-        if not text:
-            return []
+        # Split into synthetic pages of roughly 2500 characters
+        synthetic_pages = []
+        page_size = 2500
+        for i in range(0, max(len(text), 1), page_size):
+            chunk = text[i:i + page_size]
+            synthetic_pages.append({
+                "page_number": (i // page_size) + 1,
+                "text": self._clean_text(chunk)
+            })
+        return synthetic_pages
 
-        # Divide plain text into ~2000 character logical pages
-        pages = []
-        page_size = 2000
-        total_len = len(text)
-        page_num = 1
-        start = 0
-
-        while start < total_len:
-            end = min(start + page_size, total_len)
-            chunk = text[start:end].strip()
-            if chunk:
-                pages.append({"page_number": page_num, "text": chunk})
-            start = end
-            page_num += 1
-
-        return pages
-
-    def chunk_document(self, pages_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def chunk_document(self, pages_content: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Splits extracted pages into overlapping chunks while preserving page number.
-        Returns a list of dicts:
-        [
-            {
-                "content": str,
-                "page_number": int,
-                "chunk_index": int
-            }
-        ]
+        Splits extracted pages into semantic chunks with overlap.
+        Preserves page_number, start/end character offsets, and chunk metadata.
         """
-        all_chunks = []
-        global_chunk_idx = 0
-
-        for page in pages_data:
-            page_num = page["page_number"]
-            page_text = page["text"]
-
-            page_chunks = self._chunk_text(page_text)
-            for chunk_str in page_chunks:
-                if len(chunk_str.strip()) < 20:
-                    continue  # skip empty or trivial chunks
-                all_chunks.append({
-                    "content": chunk_str.strip(),
-                    "page_number": page_num,
-                    "chunk_index": global_chunk_idx
-                })
-                global_chunk_idx += 1
-
-        return all_chunks
-
-    def _chunk_text(self, text: str) -> List[str]:
-        """
-        Splits text into chunks of roughly `self.chunk_size` characters,
-        preferring natural sentence/paragraph boundaries with `self.chunk_overlap`.
-        """
-        # Normalize whitespace
-        text = re.sub(r'\r\n', '\n', text)
-        text = re.sub(r'[ \t]+', ' ', text)
-
-        paragraphs = text.split('\n\n')
         chunks = []
-        current_chunk = ""
+        chunk_idx = 0
 
-        for para in paragraphs:
-            para = para.strip()
-            if not para:
+        for page in pages_content:
+            page_num = page["page_number"]
+            text = page["text"]
+
+            # Token/word approximation: split on whitespace
+            words = text.split()
+            if not words:
                 continue
 
-            if len(current_chunk) + len(para) <= self.chunk_size:
-                current_chunk = f"{current_chunk}\n\n{para}".strip()
-            else:
-                if current_chunk:
-                    chunks.append(current_chunk)
-                    # Create overlap from end of current_chunk
-                    overlap_text = current_chunk[-self.chunk_overlap:] if len(current_chunk) > self.chunk_overlap else ""
-                    current_chunk = f"{overlap_text}\n\n{para}".strip()
-                else:
-                    # Paragraph itself is larger than chunk_size, split by sentences or characters
-                    sentences = re.split(r'(?<=[.!?]) +', para)
-                    sub_chunk = ""
-                    for s in sentences:
-                        if len(sub_chunk) + len(s) <= self.chunk_size:
-                            sub_chunk = f"{sub_chunk} {s}".strip()
-                        else:
-                            if sub_chunk:
-                                chunks.append(sub_chunk)
-                            sub_chunk = s
-                    if sub_chunk:
-                        current_chunk = sub_chunk
+            step = max(1, self.chunk_size - self.chunk_overlap)
+            for i in range(0, len(words), step):
+                chunk_words = words[i:i + self.chunk_size]
+                chunk_text = " ".join(chunk_words)
 
-        if current_chunk:
-            chunks.append(current_chunk)
+                chunks.append({
+                    "chunk_index": chunk_idx,
+                    "page_number": page_num,
+                    "content": chunk_text,
+                    "char_count": len(chunk_text),
+                    "word_count": len(chunk_words)
+                })
+                chunk_idx += 1
+
+                # If this chunk reaches the end of the words, stop
+                if i + self.chunk_size >= len(words):
+                    break
 
         return chunks
+
+    def _clean_text(self, text: str) -> str:
+        """
+        Cleans extraneous whitespace, control characters, and null bytes.
+        """
+        if not text:
+            return ""
+        # Remove null bytes and control chars except newlines and tabs
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text)
+        # Normalize multiple horizontal whitespaces
+        text = re.sub(r"[ \t]+", " ", text)
+        # Normalize excessive newlines
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
+
+document_processor = DocumentProcessor()

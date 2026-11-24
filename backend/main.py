@@ -60,10 +60,12 @@ app.include_router(action_router.router, prefix=settings.API_V1_STR)
 app.include_router(monitor_router.router, prefix=settings.API_V1_STR)
 app.include_router(temporal_router.router, prefix=settings.API_V1_STR)
 
+@app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 async def health_check():
     """
     System health check returning status of environment configurations.
+    Supports both /health (standard cloud healthcheck) and /api/health.
     """
     has_supabase = bool(settings.SUPABASE_URL and (settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY))
     has_gemini = bool(settings.GEMINI_API_KEY)
@@ -106,4 +108,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host=settings.HOST, port=settings.PORT, reload=True)
+    # Render and cloud platforms inject PORT as an environment variable (e.g. 10000)
+    port = int(os.getenv("PORT", str(settings.PORT)))
+    host = os.getenv("HOST", settings.HOST)
+    print(f"[DocuMind] Binding server on {host}:{port}...", flush=True)
+    uvicorn.run("backend.main:app", host=host, port=port, reload=False)

@@ -3,11 +3,14 @@
  * Centralized settings for API endpoints and Supabase Auth client.
  */
 
+const BACKEND_URL = localStorage.getItem("documind_api_url")
+  || ((window.location.port === "8000" || window.location.port === "3000")
+      ? window.location.origin
+      : "http://localhost:8000");
+
 const CONFIG = {
   // Backend API base URL
-  API_BASE_URL: (window.location.port === "8000" || window.location.port === "3000")
-    ? `${window.location.origin}/api`
-    : "http://localhost:8000/api",
+  API_BASE_URL: `${BACKEND_URL.replace(/\/+$/, "")}/api`,
 
   // Supabase Configuration
   // Initialized dynamically from backend or localStorage, with default fallback

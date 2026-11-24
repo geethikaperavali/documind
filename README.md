@@ -4,7 +4,7 @@ DocuMind is an enterprise-grade AI document intelligence platform built with van
 
 ---
 
-## 🌟 Workspaces & Core Capabilities
+##  Workspaces & Core Capabilities
 
 DocuMind is organized into a modular workspace suite designed for analysts, researchers, and enterprise knowledge workers:
 
@@ -60,7 +60,7 @@ DocuMind is organized into a modular workspace suite designed for analysts, rese
 
 ---
 
-## 🏗️ Project Architecture
+##  Project Architecture
 
 ```
 documind/
@@ -145,7 +145,7 @@ documind/
 
 ---
 
-## 🚀 Quickstart & Installation
+##  Quickstart & Installation
 
 ### 1. Prerequisites
 - **Python 3.10+**
@@ -229,7 +229,7 @@ python backend/port_3000_forwarder.py
 
 ---
 
-## 🔒 Security Architecture & Best Practices
+##  Security Architecture & Best Practices
 
 - **Zero Hardcoded Identities**: Authentication strictly validates Supabase JWT signatures via `/api/auth/me`. There are no fallback identities or hardcoded demo sessions.
 - **Row Level Security (RLS)**: Enforced directly at the PostgreSQL layer. Users can never query, modify, or delete another user's documents, chunks, or conversations.
@@ -238,7 +238,7 @@ python backend/port_3000_forwarder.py
 
 ---
 
-## 🧪 Testing & Verification
+##  Testing & Verification
 
 DocuMind includes an automated testing harness in `scripts/`:
 

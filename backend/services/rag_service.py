@@ -1,10 +1,9 @@
 import math
 from typing import List, Dict, Any, Optional
-from google import genai
-from google.genai import types
 from backend.config import settings
 from backend.database import get_supabase_admin
 from backend.services.embedding_service import embedding_service
+from backend.services.gemini_gateway import gemini_gateway
 
 class RAGService:
     """
@@ -24,7 +23,8 @@ class RAGService:
         "2. If the excerpts do not contain enough information to answer the question, explicitly state: "
         "'Based on your uploaded documents, I could not find information regarding this question.' Do NOT hallucinate, assume, or invent details.\n"
         "3. Provide inline citations citing the document name and page number, e.g. [Document.pdf, Page 2].\n"
-        "4. Keep your answer professional, concise, structured, and easy to read with bullet points when applicable."
+        "4. Keep your answer professional, concise, structured, and easy to read with bullet points when applicable.\n"
+        "5. RESPONSIBLE AI & UNCERTAINTY: Clearly distinguish verified facts found directly in the text from interpretations. If the document presents conflicting or ambiguous data, explicitly communicate the uncertainty to the user."
     )
 
     def __init__(self):
@@ -194,29 +194,20 @@ class RAGService:
                 "sources": sources
             }
 
-        # 6. Invoke Gemini API
+        # 6. Invoke Gemini API via Gateway
         try:
-            client = genai.Client(api_key=active_api_key)
-            model_name = settings.GEMINI_MODEL or "gemini-2.0-flash"
-            
-            response = client.models.generate_content(
-                model=model_name,
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.2, # Low temperature for factual grounding
-                    max_output_tokens=1500
-                )
+            answer = gemini_gateway.generate_text(
+                prompt=full_prompt,
+                system_instruction=self.SYSTEM_PROMPT,
+                temperature=0.2,
+                api_key=active_api_key
             )
-
-            answer = response.text.strip() if response and response.text else "No response generated."
             return {
                 "answer": answer,
                 "sources": sources
             }
-
         except Exception as e:
             err_str = str(e)
-            print(f"[RAGService] Gemini generation error: {err_str}")
             if "API_KEY_INVALID" in err_str or "400" in err_str:
                 msg = "The configured Gemini API key appears to be invalid. Please verify your API key in Settings or .env."
             elif "RESOURCE_EXHAUSTED" in err_str or "429" in err_str:

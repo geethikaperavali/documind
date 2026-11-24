@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Action Studio – DocuMind Intelligence Workspace</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/studios.css">
+  <script src="/static/js/loader.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">D</div>
+          <span>DocuMind</span>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/index.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="/documents.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Knowledge Base</span>
+        </a>
+        <a href="/chat.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span>AI Assistant</span>
+        </a>
+        <a href="/research.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          <span>Research Studio</span>
+        </a>
+        <a href="/compare.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="8" height="18" rx="2"/><rect x="14" y="3" width="8" height="18" rx="2"/><line x1="6" y1="8" x2="6" y2="8.01"/><line x1="18" y1="8" x2="18" y2="8.01"/></svg>
+          <span>Compare & Verify</span>
+        </a>
+        <a href="/explorer.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><line x1="8.5" y1="7.5" x2="15.5" y2="7.5"/><line x1="7.5" y1="8.5" x2="10.5" y2="15.5"/><line x1="16.5" y1="8.5" x2="13.5" y2="15.5"/></svg>
+          <span>Knowledge Explorer</span>
+        </a>
+        <a href="/action.html" class="nav-item active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Action Studio</span>
+        </a>
+        <a href="/monitor.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span>Live Monitor</span>
+        </a>
+        <a href="/settings.html" class="nav-item">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="/settings.html" class="user-profile-badge">
+          <div class="user-avatar">U</div>
+          <div class="user-info">
+            <div class="user-name">Loading...</div>
+            <div class="user-email">...</div>
+          </div>
+        </a>
+        <button type="button" class="btn-signout" id="btn-sidebar-signout" title="Sign Out">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 class="page-title">Action Studio</h1>
+          <span class="page-subtitle">Convert intelligence and document knowledge into plans, task breakdowns, checklists, and executive reports</span>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <!-- Studio Mode Tabs -->
+        <div class="segmented-control" style="margin-bottom:20px;max-width:320px;">
+          <button type="button" class="segmented-tab active" id="tab-btn-create">Create New Artifact</button>
+          <button type="button" class="segmented-tab" id="tab-btn-saved">Saved Artifacts <span id="saved-count-pill" style="margin-left:6px;padding:2px 7px;background:var(--border-color);border-radius:9999px;font-size:0.75rem;">0</span></button>
+        </div>
+
+        <!-- Responsible AI Contextual Notice -->
+        <div class="advisory-notice" style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #2563eb;padding:10px 16px;border-radius:6px;margin-bottom:20px;font-size:0.8125rem;color:#475569;display:flex;align-items:center;gap:10px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><strong>Human-in-the-Loop Governance:</strong> Decision artifacts, implementation plans, and checklists are AI-synthesized drafts. They must be reviewed, edited, and approved by qualified human domain experts before executing operational, financial, or compliance actions.</span>
+        </div>
+
+        <!-- VIEW 1: Generator Form -->
+        <div id="view-create-artifact">
+          <!-- Generator Form Card -->
+          <div class="card" style="margin-bottom:24px;">
+            <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:16px;">Create New Decision Artifact</h2>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:18px;">
+              <div>
+                <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:6px;">Target Artifact Format:</label>
+                <select id="select-artifact-type" class="form-control" style="width:100%;padding:10px;">
+                  <option value="plan">Phased Implementation Plan & Milestones</option>
+                  <option value="checklist">Action & Compliance Verification Checklist</option>
+                  <option value="tasks">Work Breakdown Structure (WBS Tasks)</option>
+                  <option value="business_analysis">Strategic SWOT & Risk Assessment</option>
+                  <option value="report">Executive Decision Brief</option>
+                  <option value="study">Study Material & Concept Flashcards</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:6px;">Source Material (Document / Research):</label>
+                <select id="select-action-source" class="form-control" style="width:100%;padding:10px;">
+                  <option value="">Select Knowledge Source...</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom:18px;">
+              <label style="display:block;font-size:0.875rem;font-weight:600;margin-bottom:6px;">Custom Objectives or Directives (Optional):</label>
+              <input 
+                type="text" 
+                id="action-instructions-input" 
+                class="form-control" 
+                placeholder="e.g. 'Focus on immediate Q3 compliance risks' or 'Prepare step-by-step checklist for engineering team'..."
+                style="padding:10px 14px;"
+              >
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;">
+              <button type="button" id="btn-generate-action" class="btn btn-primary" style="padding:10px 24px;">
+                Generate Action Artifact
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading State -->
+          <div id="action-loading" class="card" style="display:none;text-align:center;padding:48px 24px;">
+            <div class="spinner" style="margin:0 auto 16px;"></div>
+            <h3 style="font-size:1.15rem;margin-bottom:8px;">Synthesizing Actionable Decisions...</h3>
+            <p style="color:var(--text-muted);font-size:0.9rem;">Structuring tasks, verification gates, milestones, and deliverable matrices...</p>
+          </div>
+
+          <!-- Rendered Artifact Card -->
+          <div id="action-results" style="display:none;"></div>
+
+          <!-- Empty State -->
+          <div id="action-empty" class="empty-state" style="padding:60px 20px;">
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <div class="empty-title">Ready to Turn Knowledge into Execution</div>
+            <div class="empty-subtitle">
+              Select an uploaded document or research report above to produce an execution plan, verification checklist, or decision brief.
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 2: Saved Artifacts List -->
+        <div id="view-saved-artifacts" style="display:none;">
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <h2 style="font-size:1.1rem;font-weight:600;margin:0;">Saved Decision Artifacts</h2>
+              <button type="button" id="btn-refresh-saved" class="btn btn-secondary btn-sm">Refresh List</button>
+            </div>
+            <div id="saved-artifacts-list">
+              <div style="text-align:center;padding:32px;color:var(--text-muted);">Loading saved artifacts...</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/static/js/config.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/action.js"></script>
+  <script>
+    document.getElementById("btn-sidebar-signout")?.addEventListener("click", () => {
+      if (confirm("Are you sure you want to sign out?")) {
+        window.authManager.signOut();
+      }
+    });
+  </script>
+</body>
+</html>

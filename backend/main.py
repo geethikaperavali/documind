@@ -1,4 +1,6 @@
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,18 +8,34 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
+from backend.services.surveillance_scheduler import run_surveillance_worker
 from backend.routers import (
     auth_router,
     documents_router,
     chat_router,
     dashboard_router,
-    profile_router
+    profile_router,
+    research_router,
+    compare_router,
+    explorer_router,
+    action_router,
+    monitor_router,
+    temporal_router
 )
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    worker_task = asyncio.create_task(run_surveillance_worker())
+    try:
+        yield
+    finally:
+        worker_task.cancel()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="DocuMind - Secure AI-Powered Document Intelligence Platform Backend",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -35,6 +53,12 @@ app.include_router(documents_router.router, prefix=settings.API_V1_STR)
 app.include_router(chat_router.router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router.router, prefix=settings.API_V1_STR)
 app.include_router(profile_router.router, prefix=settings.API_V1_STR)
+app.include_router(research_router.router, prefix=settings.API_V1_STR)
+app.include_router(compare_router.router, prefix=settings.API_V1_STR)
+app.include_router(explorer_router.router, prefix=settings.API_V1_STR)
+app.include_router(action_router.router, prefix=settings.API_V1_STR)
+app.include_router(monitor_router.router, prefix=settings.API_V1_STR)
+app.include_router(temporal_router.router, prefix=settings.API_V1_STR)
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():

@@ -1,5 +1,8 @@
+import os
+import re
 import uuid
 from typing import Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query, status
 from backend.auth import get_current_user
 from backend.database import get_supabase_admin
@@ -24,8 +27,11 @@ async def upload_document(
     and saves chunks to the database.
     """
     user_id = user["id"]
-    filename = file.filename or "untitled_document"
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    # Sanitize uploaded filename: prevent directory traversal and special character injection
+    raw_name = os.path.basename(file.filename or "untitled_document")
+    clean_name = re.sub(r"[^a-zA-Z0-9._-]", "_", raw_name).lstrip(".").strip() or "document"
+    ext = clean_name.rsplit(".", 1)[-1].lower() if "." in clean_name else ""
+    filename = clean_name
 
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -172,6 +178,117 @@ async def upload_document(
             "status": "failed",
             "error": err_msg
         }
+
+class TextDocumentRequest(BaseModel):
+    title: str
+    content: str
+
+@router.post("/text")
+async def create_text_document(
+    req: TextDocumentRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Ingests and indexes a text document entered manually through the Knowledge Base editor.
+    Uses the exact same chunking, embedding, and vector indexing pipeline as uploaded files.
+    """
+    title = req.title.strip()
+    content = req.content.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Document title cannot be empty.")
+    if not content:
+        raise HTTPException(status_code=400, detail="Document content cannot be empty.")
+
+    if not title.lower().endswith(".txt"):
+        filename = f"{title}.txt"
+    else:
+        filename = title
+
+    user_id = user["id"]
+    doc_id = str(uuid.uuid4())
+    content_bytes = content.encode("utf-8")
+    file_size = len(content_bytes)
+
+    # 1. Store text content in Supabase Storage or local fallback
+    storage_path = f"{user_id}/{doc_id}_{filename}"
+    try:
+        storage_path, _ = storage_service.upload_file(content_bytes, f"{doc_id}_{filename}", user_id, "text/plain")
+    except Exception as e:
+        print(f"[DocumentsRouter] Storage warning for text doc: {e}")
+
+    # 2. Insert document record
+    doc_record = {
+        "id": doc_id,
+        "user_id": user_id,
+        "name": filename,
+        "file_path": storage_path,
+        "file_type": "txt",
+        "file_size": file_size,
+        "status": "processing",
+        "chunk_count": 0
+    }
+
+    admin = get_supabase_admin()
+    try:
+        admin.table("documents").insert(doc_record).execute()
+    except Exception as e:
+        print(f"[DocumentsRouter] DB document insert note: {e}")
+
+    # 3. Chunk text
+    processor = DocumentProcessor(
+        chunk_size=settings.CHUNK_SIZE,
+        chunk_overlap=settings.CHUNK_OVERLAP
+    )
+    pages_data = [{"text": content, "page_number": 1}]
+    chunks = processor.chunk_document(pages_data)
+
+    if not chunks:
+        raise HTTPException(status_code=400, detail="Document content is too sparse to produce indexable chunks.")
+
+    # 4. Generate embeddings
+    chunk_texts = [c["content"] for c in chunks]
+    embeddings = embedding_service.generate_embeddings(chunk_texts)
+
+    # 5. Insert chunks
+    chunk_records = []
+    for i, chunk in enumerate(chunks):
+        chunk_records.append({
+            "id": str(uuid.uuid4()),
+            "document_id": doc_id,
+            "user_id": user_id,
+            "content": chunk["content"],
+            "page_number": chunk["page_number"],
+            "chunk_index": chunk["chunk_index"],
+            "embedding": embeddings[i],
+            "metadata": {"file_type": "txt", "filename": filename, "source": "manual_entry"}
+        })
+
+    batch_size = 50
+    for b_start in range(0, len(chunk_records), batch_size):
+        batch = chunk_records[b_start:b_start + batch_size]
+        try:
+            admin.table("document_chunks").insert(batch).execute()
+        except Exception as e:
+            print(f"[DocumentsRouter] Chunks insert note: {e}")
+
+    try:
+        admin.table("documents").update({
+            "status": "ready",
+            "chunk_count": len(chunks)
+        }).eq("id", doc_id).execute()
+    except Exception as e:
+        print(f"[DocumentsRouter] Document update ready note: {e}")
+
+    doc_record["status"] = "ready"
+    doc_record["chunk_count"] = len(chunks)
+
+    return {
+        "id": doc_id,
+        "name": filename,
+        "status": "ready",
+        "chunk_count": len(chunks),
+        "message": f"Successfully ingested and indexed '{filename}' ({len(chunks)} chunks embedded)."
+    }
 
 @router.get("")
 async def list_documents(

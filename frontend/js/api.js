@@ -15,8 +15,10 @@ class ApiClient {
   async request(endpoint, options = {}) {
     const url = endpoint.startsWith("http") ? endpoint : `${this.baseUrl}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
     
-    // Ensure auth is initialized and get token
-    await window.authManager.init();
+    // Ensure auth is initialized once and get token
+    if (!window.authManager.isInitialized) {
+      await window.authManager.init();
+    }
     const token = window.authManager.getAccessToken();
 
     const headers = {
@@ -25,6 +27,12 @@ class ApiClient {
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Attach optional custom Gemini API key configured in user settings
+    const customGeminiKey = localStorage.getItem("documind_gemini_key");
+    if (customGeminiKey) {
+      headers["X-Gemini-API-Key"] = customGeminiKey;
     }
 
     // Do not set Content-Type if sending FormData (browser sets boundary automatically)

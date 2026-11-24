@@ -50,3 +50,4 @@ async def get_public_auth_config():
         "supabase_anon_key": settings.SUPABASE_ANON_KEY,
         "has_gemini_key": bool(settings.GEMINI_API_KEY)
     }
+

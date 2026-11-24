@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, status
 from backend.auth import get_current_user
 from backend.database import get_supabase_admin
+from backend.services.orchestrator import orchestrator
 from backend.services.rag_service import rag_service
 
 router = APIRouter(prefix="/chat", tags=["AI Chat / RAG"])
@@ -90,16 +91,26 @@ async def ask_question(
     except Exception as e:
         print(f"[ChatRouter] User message store warning: {e}")
 
-    # 4. Execute RAG retrieval and answer synthesis
-    rag_result = rag_service.answer_question(
+    # 4. Check if user has uploaded documents to route zero-doc users to external knowledge
+    has_user_docs = False
+    try:
+        doc_check = admin.table("documents").select("id", count="exact").eq("user_id", user_id).eq("status", "ready").limit(1).execute()
+        has_user_docs = bool(doc_check.count and doc_check.count > 0) or bool(doc_check.data and len(doc_check.data) > 0)
+    except Exception as e:
+        print(f"[ChatRouter] Doc check notice: {e}")
+        has_user_docs = False
+
+    active_key = payload.gemini_api_key or user.get("custom_gemini_key")
+    rag_result = orchestrator.orchestrate_query(
         question=question,
         user_id=user_id,
         conversation_history=history,
-        gemini_api_key=payload.gemini_api_key
+        has_user_docs=has_user_docs
     )
 
     answer_text = rag_result.get("answer", "")
     sources = rag_result.get("sources", [])
+    orchestration_mode = rag_result.get("orchestration_mode", "PRIVATE_RAG")
 
     # 5. Store assistant message with sources in DB
     assistant_msg_id = str(uuid.uuid4())
@@ -120,7 +131,8 @@ async def ask_question(
         "message_id": assistant_msg_id,
         "question": question,
         "answer": answer_text,
-        "sources": sources
+        "sources": sources,
+        "orchestration_mode": orchestration_mode
     }
 
 @router.get("/conversations")

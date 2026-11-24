@@ -19,7 +19,7 @@ class Settings:
     
     # Gemini AI Configuration
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
     
     # Embedding Settings
     # 384-dimensional dense vector embedding (SentenceTransformers)
@@ -42,8 +42,7 @@ class Settings:
         "http://127.0.0.1",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:5500",
-        "*"
+        "http://127.0.0.1:5500"
     ]
 
 settings = Settings()

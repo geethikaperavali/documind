@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from backend.config import settings
 from backend.database import get_supabase_admin
@@ -8,12 +8,15 @@ from backend.database import get_supabase_admin
 security = HTTPBearer(auto_error=False)
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Dict[str, Any]:
     """
     FastAPI dependency to verify Supabase JWT token and extract user information.
     Checks bearer token via Supabase Auth API, or PyJWT if configured.
+    Also extracts optional custom Gemini API key from request headers.
     """
+    custom_gemini_key = request.headers.get("X-Gemini-API-Key")
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,7 +44,8 @@ async def get_current_user(
                     "email": email,
                     "role": payload.get("role", "authenticated"),
                     "user_metadata": payload.get("user_metadata", {}),
-                    "token": token
+                    "token": token,
+                    "custom_gemini_key": custom_gemini_key
                 }
         except jwt.PyJWTError:
             # Fall through to Supabase API verification
@@ -50,7 +54,6 @@ async def get_current_user(
     # Method 2: Verify against Supabase Auth API directly
     try:
         admin = get_supabase_admin()
-        # Call supabase auth get_user using user token
         user_response = admin.auth.get_user(token)
         if not user_response or not user_response.user:
             raise HTTPException(
@@ -65,7 +68,8 @@ async def get_current_user(
             "email": user.email or "",
             "role": user.role or "authenticated",
             "user_metadata": user.user_metadata or {},
-            "token": token
+            "token": token,
+            "custom_gemini_key": custom_gemini_key
         }
     except HTTPException:
         raise

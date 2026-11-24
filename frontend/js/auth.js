@@ -11,32 +11,52 @@ class AuthManager {
     this.user = null;
     this.isInitialized = false;
     this._initPromise = null;
+    this._authListenerRegistered = false;
+
+    // Immediately hydrate user badge from sessionStorage cache if available to prevent UI flash
+    try {
+      const cached = sessionStorage.getItem("documind_cached_user");
+      if (cached) {
+        const cachedUser = JSON.parse(cached);
+        this._renderUserElements(cachedUser.full_name, cachedUser.email, cachedUser.avatar_url);
+      }
+    } catch (_) {}
   }
 
   /**
-   * Initializes Supabase Auth client by querying backend configuration
-   * or reading cached credentials.
+   * Initializes Supabase Auth client by reading cached credentials
+   * or querying backend configuration only if credentials are not yet cached.
    */
   async init() {
     if (this._initPromise) return this._initPromise;
 
     this._initPromise = (async () => {
-      // 1. Fetch public Supabase configuration from FastAPI backend
-      try {
-        const res = await fetch(`${window.CONFIG.API_BASE_URL}/auth/config`);
-        if (res.ok) {
-          const cfg = await res.json();
-          if (cfg.supabase_url && cfg.supabase_anon_key) {
-            window.CONFIG.SUPABASE_URL = cfg.supabase_url;
-            window.CONFIG.SUPABASE_ANON_KEY = cfg.supabase_anon_key;
-          }
-        }
-      } catch (err) {
-        console.warn("[DocuMind Auth] Could not reach /api/auth/config, using existing config:", err);
-      }
+      // 1. Check if Supabase URL & Anon Key are already available locally
+      let supabaseUrl = window.CONFIG.SUPABASE_URL || localStorage.getItem("documind_supabase_url");
+      let supabaseAnonKey = window.CONFIG.SUPABASE_ANON_KEY || localStorage.getItem("documind_supabase_anon_key");
 
-      const supabaseUrl = window.CONFIG.SUPABASE_URL;
-      const supabaseAnonKey = window.CONFIG.SUPABASE_ANON_KEY;
+      // Only make a network fetch if credentials are missing
+      if (!supabaseUrl || !supabaseAnonKey) {
+        try {
+          const res = await fetch(`${window.CONFIG.API_BASE_URL}/auth/config`);
+          if (res.ok) {
+            const cfg = await res.json();
+            if (cfg.supabase_url && cfg.supabase_anon_key) {
+              supabaseUrl = cfg.supabase_url;
+              supabaseAnonKey = cfg.supabase_anon_key;
+              window.CONFIG.SUPABASE_URL = supabaseUrl;
+              window.CONFIG.SUPABASE_ANON_KEY = supabaseAnonKey;
+              localStorage.setItem("documind_supabase_url", supabaseUrl);
+              localStorage.setItem("documind_supabase_anon_key", supabaseAnonKey);
+            }
+          }
+        } catch (err) {
+          console.warn("[DocuMind Auth] Could not reach /api/auth/config, using existing config:", err);
+        }
+      } else {
+        window.CONFIG.SUPABASE_URL = supabaseUrl;
+        window.CONFIG.SUPABASE_ANON_KEY = supabaseAnonKey;
+      }
 
       if (!supabaseUrl || !supabaseAnonKey) {
         console.warn("[DocuMind Auth] Supabase URL or Anon Key is missing. Please configure them in .env or Settings.");
@@ -55,17 +75,47 @@ class AuthManager {
         this.session = data.session;
         this.user = this.session ? this.session.user : null;
 
-        // Listen for auth state changes
-        this.supabase.auth.onAuthStateChange((event, session) => {
-          this.session = session;
-          this.user = session ? session.user : null;
+        if (this.user) {
+          this.updateUserUI();
+        }
 
-          if (event === "SIGNED_OUT") {
-            this.handleSignOutRedirect();
-          } else if (event === "SIGNED_IN" && session) {
-            this.updateUserUI();
-          }
-        });
+        // If returning from OAuth redirect, give Supabase a moment to parse hash/code
+        const hasOAuthParams = window.location.hash.includes("access_token") || 
+                               window.location.search.includes("code=");
+        if (!this.session && hasOAuthParams) {
+          await new Promise((resolve) => {
+            const timeout = setTimeout(resolve, 3000);
+            const { data: listener } = this.supabase.auth.onAuthStateChange((event, session) => {
+              if (session) {
+                this.session = session;
+                this.user = session.user;
+                clearTimeout(timeout);
+                if (listener && listener.subscription) listener.subscription.unsubscribe();
+                if (window.location.hash) {
+                  window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                }
+                this.updateUserUI();
+                resolve();
+              }
+            });
+          });
+        }
+
+        // Listen for auth state changes once
+        if (!this._authListenerRegistered) {
+          this._authListenerRegistered = true;
+          this.supabase.auth.onAuthStateChange((event, session) => {
+            this.session = session;
+            this.user = session ? session.user : null;
+
+            if (event === "SIGNED_OUT") {
+              sessionStorage.removeItem("documind_cached_user");
+              this.handleSignOutRedirect();
+            } else if (event === "SIGNED_IN" && session) {
+              this.updateUserUI();
+            }
+          });
+        }
       }
 
       this.isInitialized = true;
@@ -100,7 +150,74 @@ class AuthManager {
       return false;
     }
     this.updateUserUI();
+    this.setupResponsiveNav();
     return true;
+  }
+
+  /**
+   * Sets up responsive mobile drawer toggle and backdrop across workspaces
+   */
+  setupResponsiveNav() {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) return;
+
+    let backdrop = document.querySelector(".sidebar-backdrop");
+    if (!backdrop) {
+      backdrop = document.createElement("div");
+      backdrop.className = "sidebar-backdrop";
+      document.body.appendChild(backdrop);
+    }
+
+    const header = document.querySelector(".top-header, .topbar");
+    if (header) {
+      let toggleBtn = header.querySelector(".btn-sidebar-toggle");
+      if (!toggleBtn) {
+        toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "btn-sidebar-toggle";
+        toggleBtn.setAttribute("aria-label", "Toggle navigation");
+        toggleBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        `;
+
+        const titleBlock = header.querySelector(".page-title-block, .topbar-left");
+        if (titleBlock) {
+          let leftGroup = header.querySelector(".header-left-group");
+          if (!leftGroup) {
+            leftGroup = document.createElement("div");
+            leftGroup.className = "header-left-group";
+            titleBlock.parentNode.insertBefore(leftGroup, titleBlock);
+            leftGroup.appendChild(toggleBtn);
+            leftGroup.appendChild(titleBlock);
+          } else {
+            leftGroup.insertBefore(toggleBtn, leftGroup.firstChild);
+          }
+        } else {
+          header.insertBefore(toggleBtn, header.firstChild);
+        }
+      }
+
+      toggleBtn.onclick = () => {
+        const isOpen = sidebar.classList.toggle("mobile-open");
+        backdrop.classList.toggle("active", isOpen);
+      };
+    }
+
+    backdrop.onclick = () => {
+      sidebar.classList.remove("mobile-open");
+      backdrop.classList.remove("active");
+    };
+
+    sidebar.querySelectorAll(".nav-item").forEach(item => {
+      item.onclick = () => {
+        sidebar.classList.remove("mobile-open");
+        backdrop.classList.remove("active");
+      };
+    });
   }
 
   /**
@@ -272,6 +389,22 @@ class AuthManager {
     const email = this.user.email || "";
     const meta = this.user.user_metadata || {};
     const fullName = meta.full_name || email.split("@")[0] || "User";
+    const avatarUrl = meta.avatar_url || "";
+
+    // Cache profile in sessionStorage for zero-latency hydration across page navigation
+    try {
+      sessionStorage.setItem("documind_cached_user", JSON.stringify({
+        email,
+        full_name: fullName,
+        avatar_url: avatarUrl
+      }));
+    } catch (_) {}
+
+    this._renderUserElements(fullName, email, avatarUrl);
+  }
+
+  _renderUserElements(fullName, email, avatarUrl) {
+    if (!fullName && !email) return;
 
     // Set Name & Email
     const nameEls = document.querySelectorAll(".user-name");
@@ -290,8 +423,8 @@ class AuthManager {
 
     const avatarEls = document.querySelectorAll(".user-avatar");
     avatarEls.forEach(el => {
-      if (meta.avatar_url) {
-        el.innerHTML = `<img src="${meta.avatar_url}" alt="${fullName}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+      if (avatarUrl) {
+        el.innerHTML = `<img src="${avatarUrl}" alt="${fullName}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
       } else {
         el.textContent = initials;
       }

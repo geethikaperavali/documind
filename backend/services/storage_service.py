@@ -1,27 +1,50 @@
 import os
+import re
 from pathlib import Path
 from typing import Tuple
 from backend.config import settings
 from backend.database import get_supabase_admin
 
 # Local storage fallback directory
-LOCAL_STORAGE_DIR = Path(__file__).resolve().parent.parent / "uploads"
+LOCAL_STORAGE_DIR = (Path(__file__).resolve().parent.parent / "uploads").resolve()
 LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 class StorageService:
     """
     Manages document file storage in Supabase Storage bucket ('documents')
     with user-isolated paths: '<user_id>/<filename>', plus local fallback.
+    Enforces strict path traversal defenses on all storage operations.
     """
 
     BUCKET_NAME = "documents"
 
+    @staticmethod
+    def sanitize_filename(filename: str) -> str:
+        """
+        Strips directory components and replaces unsafe characters.
+        Enforces strict alphanumeric, dot, underscore, hyphen whitelist.
+        Handles URL-encoded sequences and null-byte injection.
+        """
+        import urllib.parse
+        # Decode any URL-encoded traversal payloads (%2e%2e%2f -> ../)
+        unquoted = urllib.parse.unquote(filename or "file")
+        # Strip null bytes and control characters
+        cleaned_str = unquoted.replace("\x00", "").strip()
+        base = os.path.basename(cleaned_str)
+        # Whitelist alphanumeric, dot, underscore, hyphen
+        clean = re.sub(r"[^a-zA-Z0-9._-]", "_", base)
+        # Prevent hidden files and leading/trailing dots or spaces
+        safe = re.sub(r"\.{2,}", "_", clean).lstrip(".").strip()
+        return safe or "unnamed_document"
+
     def upload_file(self, file_bytes: bytes, file_name: str, user_id: str, content_type: str) -> Tuple[str, str]:
         """
-        Uploads file to Supabase Storage.
+        Uploads file to Supabase Storage with local fallback.
         Returns (storage_path, public_or_signed_url).
         """
-        storage_path = f"{user_id}/{file_name}"
+        clean_file_name = self.sanitize_filename(file_name)
+        clean_user_id = self.sanitize_filename(user_id)
+        storage_path = f"{clean_user_id}/{clean_file_name}"
 
         # 1. Try uploading to Supabase Storage
         try:
@@ -48,14 +71,23 @@ class StorageService:
         except Exception as e:
             print(f"[StorageService] Supabase Storage upload error ({e}). Using local fallback.")
 
-        # 2. Local fallback storage
-        user_folder = LOCAL_STORAGE_DIR / user_id
+        # 2. Local fallback storage with strict directory containment check (genuine boundary check)
+        user_folder = (LOCAL_STORAGE_DIR / clean_user_id).resolve()
         user_folder.mkdir(parents=True, exist_ok=True)
-        local_file_path = user_folder / file_name
+        local_file_path = (user_folder / clean_file_name).resolve()
+
+        try:
+            # Genuine filesystem hierarchy containment verification
+            rel_path = local_file_path.relative_to(user_folder)
+            if not rel_path.parts or local_file_path == user_folder:
+                raise ValueError("Target path must be a file inside user directory")
+        except ValueError:
+            raise ValueError(f"Path traversal security exception for file: {file_name}")
+
         with open(local_file_path, "wb") as f:
             f.write(file_bytes)
 
-        return storage_path, f"/local-files/{user_id}/{file_name}"
+        return storage_path, f"/local-files/{clean_user_id}/{clean_file_name}"
 
     def download_file(self, storage_path: str, user_id: str) -> bytes:
         """
@@ -69,13 +101,21 @@ class StorageService:
         except Exception as e:
             print(f"[StorageService] Supabase download error ({e}). Checking local fallback.")
 
-        # Check local fallback
-        parts = storage_path.split("/")
-        filename = parts[-1]
-        local_file_path = LOCAL_STORAGE_DIR / user_id / filename
-        if local_file_path.exists():
-            with open(local_file_path, "rb") as f:
-                return f.read()
+        # Check local fallback with strict containment
+        parts = storage_path.replace("\\", "/").split("/")
+        clean_user_id = self.sanitize_filename(parts[0] if len(parts) > 1 else user_id)
+        clean_filename = self.sanitize_filename(parts[-1])
+
+        user_folder = (LOCAL_STORAGE_DIR / clean_user_id).resolve()
+        local_file_path = (user_folder / clean_filename).resolve()
+
+        try:
+            local_file_path.relative_to(user_folder)
+            if local_file_path.exists() and local_file_path.is_file():
+                with open(local_file_path, "rb") as f:
+                    return f.read()
+        except ValueError:
+            pass
 
         raise FileNotFoundError(f"File not found at storage path: {storage_path}")
 
@@ -90,13 +130,17 @@ class StorageService:
         except Exception as e:
             print(f"[StorageService] Supabase delete warning: {e}")
 
-        # Try local fallback
-        local_file_path = LOCAL_STORAGE_DIR / storage_path
-        if local_file_path.exists():
-            try:
-                os.remove(local_file_path)
-            except Exception:
-                pass
+        # Try local fallback with containment validation
+        try:
+            parts = storage_path.replace("\\", "/").split("/")
+            if len(parts) >= 2:
+                user_folder = (LOCAL_STORAGE_DIR / self.sanitize_filename(parts[0])).resolve()
+                local_file_path = (user_folder / self.sanitize_filename(parts[-1])).resolve()
+                local_file_path.relative_to(user_folder)
+                if local_file_path.exists() and local_file_path.is_file():
+                    os.remove(local_file_path)
+        except (ValueError, Exception) as e:
+            print(f"[StorageService] Local delete warning: {e}")
 
         return True
 

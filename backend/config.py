@@ -34,15 +34,12 @@ class Settings:
     # Server & CORS
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
+    # CORS Origins: reads from CORS_ORIGINS environment variable or defaults to local & production origins
     CORS_ORIGINS: list = [
-        "http://localhost",
-        "http://localhost:8000",
-        "http://localhost:3000",
-        "http://localhost:5500",
-        "http://127.0.0.1",
-        "http://127.0.0.1:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5500"
+        origin.strip() for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost,http://localhost:8000,http://localhost:3000,http://localhost:5500,http://127.0.0.1,http://127.0.0.1:8000,http://127.0.0.1:3000,http://127.0.0.1:5500,https://documind-frontend-blond.vercel.app"
+        ).split(",") if origin.strip()
     ]
 
 settings = Settings()
